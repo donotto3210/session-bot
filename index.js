@@ -1,3 +1,13 @@
+// === Web server for Koyeb health check ===
+const express = require('express');
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Simple endpoint so Koyeb sees the service as healthy
+app.get('/', (req, res) => res.send('Bot is alive!'));
+app.listen(PORT, () => console.log(`✅ Web server running on port ${PORT}`));
+
+// === Discord bot setup ===
 const { Client, GatewayIntentBits, SlashCommandBuilder, Routes } = require('discord.js');
 const { REST } = require('@discordjs/rest');
 const fetch = require('node-fetch');
@@ -52,21 +62,22 @@ const commands = [
     .setDescription('Cancel your scheduled session')
 ].map(c => c.toJSON());
 
-// Deploy commands globally
+// === Deploy commands globally ===
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+
 (async () => {
   try {
     await rest.put(
       Routes.applicationCommands(process.env.CLIENT_ID),
       { body: commands },
     );
-    console.log('✅ Slash commands registered');
+    console.log('✅ Slash commands registered globally');
   } catch (err) {
-    console.error(err);
+    console.error('❌ Failed to register commands:', err);
   }
 })();
 
-// === Trello Helpers ===
+// === Trello Helper Function ===
 async function createTrelloCard(title, description) {
   const url = `https://api.trello.com/1/cards?idList=${process.env.TRELLO_LIST_ID}&key=${process.env.TRELLO_KEY}&token=${process.env.TRELLO_TOKEN}`;
   const body = new URLSearchParams({ name: title, desc: description });
@@ -74,12 +85,15 @@ async function createTrelloCard(title, description) {
   return res.json();
 }
 
+// === Discord Bot Event Handlers ===
 client.on('ready', () => console.log(`🤖 Logged in as ${client.user.tag}`));
 
 client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
-  if (interaction.commandName === 'schedule') {
+  const { commandName } = interaction;
+
+  if (commandName === 'schedule') {
     const type = interaction.options.getString('type');
     const time = interaction.options.getString('time');
     const host = interaction.options.getString('host');
@@ -88,23 +102,30 @@ client.on('interactionCreate', async interaction => {
     const title = `${type}`;
     const description = `Host: ${host}\nCo-Host: ${cohost}\nTime: ${time}`;
 
-    const card = await createTrelloCard(title, description);
-    await interaction.reply(`✅ Scheduled **${type}** at **${time}**\n🔗 Trello card: ${card.shortUrl}`);
+    try {
+      const card = await createTrelloCard(title, description);
+      await interaction.reply(`✅ Scheduled **${type}** at **${time}**\n🔗 Trello card: ${card.shortUrl}`);
+    } catch (err) {
+      console.error(err);
+      await interaction.reply('❌ Failed to create Trello card.');
+    }
   }
 
-  if (interaction.commandName === 'end') {
+  if (commandName === 'end') {
     await interaction.reply("🔚 (Placeholder) This would mark your Trello card as ended.");
   }
 
-  if (interaction.commandName === 'edit') {
-    const time = interaction.options.getString('time');
-    const cohost = interaction.options.getString('cohost');
-    await interaction.reply(`✏️ (Placeholder) Update Trello card → Time: ${time || "Unchanged"}, Co-Host: ${cohost || "Unchanged"}`);
+  if (commandName === 'edit') {
+    const time = interaction.options.getString('time') || "Unchanged";
+    const cohost = interaction.options.getString('cohost') || "Unchanged";
+    await interaction.reply(`✏️ (Placeholder) Update Trello card → Time: ${time}, Co-Host: ${cohost}`);
   }
 
-  if (interaction.commandName === 'cancel') {
+  if (commandName === 'cancel') {
     await interaction.reply("❌ (Placeholder) This would cancel/delete your Trello card.");
   }
 });
 
+// === Login the Bot ===
 client.login(process.env.DISCORD_TOKEN);
+
