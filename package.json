@@ -1,14 +1,20 @@
 {
   "name": "session-bot",
   "version": "1.0.0",
-  "description": "A Discord bot for scheduling shifts/trainings with Trello integration",
+  "description": "Discord bot for scheduling shifts and Trello integration",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
+  "engines": {
+    "node": "22.x"
+  },
   "dependencies": {
-    "discord.js": "^14.15.3",
-    "dotenv": "^16.4.5",
-    "node-fetch": "^2.6.12"
-  }
+    "discord.js": "^14.11.0",
+    "node-fetch": "^3.3.2",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2"
+  },
+  "author": "donotto3210",
+  "license": "MIT"
 }
